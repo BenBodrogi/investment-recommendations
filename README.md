@@ -125,7 +125,17 @@ watchlist (any asset class). Re-evaluated on every run, but stabilized by
 hysteresis (`config.BEST_CHOICE_SWITCH_MARGIN`, default 5 points) — the
 featured pick only changes when a new leader clearly beats the incumbent's
 current score, not on ordinary day-to-day noise. Not a calendar lock: there's
-no expiry, just a switching threshold. See `intelligence/best_choice.py`.
+no expiry, just a switching threshold.
+
+That protection is earned, not automatic: a pick only carries hysteresis
+protection into the next run if the run that made it scored at least
+`config.BEST_CHOICE_MIN_COVERAGE_PCT` (90%) of attempted symbols. Otherwise
+a near-total outage (e.g. every equity/ETF source down, only crypto able to
+score) could crown a symbol that was never actually compared against the
+full field, and hysteresis would then defend that accidental pick
+indefinitely even after data recovered. An unconfirmed pick is
+`best_choice_confirmed: false` in the JSON and gets re-evaluated freely next
+run regardless of margin. See `intelligence/best_choice.py`.
 
 ---
 
