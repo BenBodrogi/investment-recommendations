@@ -159,10 +159,20 @@ functions cap at ~10s, Pro at 60-300s, and a real run takes ~90-150s. Instead:
 
 **One-time setup** (not automatable — both require your own account access):
 - Add `FINNHUB_API_KEY`, `FRED_API_KEY`, `MARKETAUX_API_KEY`,
-  `SEC_EDGAR_USER_AGENT`, `COINGECKO_API_KEY` as GitHub Actions secrets
-  (repo Settings → Secrets and variables → Actions).
+  `SEC_EDGAR_USER_AGENT`, `COINGECKO_API_KEY` as **Repository secrets**
+  (repo Settings → Secrets and variables → Actions) — specifically
+  repository-level, not under an Environment. The workflow doesn't declare
+  an `environment:`, so Environment-scoped secrets are invisible to it and
+  every keyed source fails silently (`FINNHUB_API_KEY is not set`, etc.)
+  while CoinGecko — the only source needing no key — keeps working. That
+  asymmetry (everything but CoinGecko fails) is the signature of this
+  exact misconfiguration; check `dashboard-web/data/dashboard_data.json`'s
+  `data_quality` field for the precise per-source error if it happens again.
 - Import this repo into Vercel as a new project with **Root Directory set
-  to `dashboard-web`**; everything else can stay at Vercel's defaults.
+  to `dashboard-web`** *and* **Framework Preset explicitly set to Next.js**
+  — Root Directory alone isn't enough for detection to kick in reliably;
+  leaving the preset on its default produced a platform-level 404 (no
+  Next.js app detected to build) rather than a working deploy.
 
 The local "Refresh now" button only appears when `PIPELINE_PYTHON` is set
 (i.e. in local dev via `dashboard-web/.env.local`) — the deployed site
@@ -185,4 +195,4 @@ consult a licensed professional before making investment decisions.
 | Phase | Status | Description |
 |---|---|---|
 | 1 | Done | Pipeline: fetch, score, deep-dive, write JSON — verified end-to-end |
-| 2 | Built, not yet live | GitHub Actions + Vercel auto-deploy (see [Deployment](#deployment)) — code is in place; still needs your GitHub secrets added and the repo imported into Vercel before it's actually running on a schedule |
+| 2 | Live | GitHub Actions (daily cron) + Vercel auto-deploy on push — deployed and confirmed working end-to-end (see [Deployment](#deployment)) |
