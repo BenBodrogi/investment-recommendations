@@ -146,8 +146,12 @@ def main() -> int:
         "run_duration_seconds": round(time.monotonic() - start, 1),
     }
 
-    best_choice_symbol = best_choice.determine_best_choice(scored_symbols)
-    payload = payload_builder.build_payload(scored_symbols, deep_dives, macro, data_quality, best_choice_symbol)
+    best_choice_symbol, best_choice_confirmed = best_choice.determine_best_choice(
+        scored_symbols, len(symbols_skipped)
+    )
+    payload = payload_builder.build_payload(
+        scored_symbols, deep_dives, macro, data_quality, best_choice_symbol, best_choice_confirmed
+    )
     result_path = payload_builder.write_payload(payload)
 
     logger.info(

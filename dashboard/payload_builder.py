@@ -10,7 +10,9 @@ def _asdict(obj):
     return dataclasses.asdict(obj) if dataclasses.is_dataclass(obj) else obj
 
 
-def build_payload(scored_symbols: list, deep_dives: dict, macro, data_quality: dict, best_choice) -> dict:
+def build_payload(
+    scored_symbols: list, deep_dives: dict, macro, data_quality: dict, best_choice, best_choice_confirmed: bool
+) -> dict:
     return {
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "disclaimer": config.STANDING_DISCLAIMER,
@@ -23,6 +25,7 @@ def build_payload(scored_symbols: list, deep_dives: dict, macro, data_quality: d
         },
         "watchlist_summary": [_asdict(s) for s in scored_symbols],
         "best_choice": _asdict(best_choice),
+        "best_choice_confirmed": best_choice_confirmed,
         "deep_dives": {
             asset_class: [_asdict(d) for d in dives]
             for asset_class, dives in deep_dives.items()

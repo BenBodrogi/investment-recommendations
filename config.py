@@ -56,6 +56,13 @@ NEUTRAL_SCORE = 50               # default sub-score when a metric is missing
 # leader beats the incumbent's *current* score by more than this margin, so
 # it doesn't flip between two near-tied symbols on ordinary day-to-day noise.
 BEST_CHOICE_SWITCH_MARGIN = 5
+# A pick only earns hysteresis protection if the run that made it scored at
+# least this % of the watchlist. Otherwise a near-total outage (e.g. every
+# equity/ETF source down, only crypto scoring) can crown a symbol that was
+# never actually compared against the full field, and hysteresis would then
+# defend that accidental pick indefinitely. An unconfirmed pick gets no
+# protection - the next run re-evaluates it freely, healthy or not.
+BEST_CHOICE_MIN_COVERAGE_PCT = 90
 
 # --- Scoring thresholds: crypto ---
 CRYPTO_ATH_SWEET_SPOT_LOW_PCT = -50   # % off all-time-high
