@@ -1,0 +1,48 @@
+# Curated starter universe (~40 symbols). Fully editable — add/remove rows
+# freely; the pipeline re-reads this file on every run.
+
+stocks:
+  - {symbol: AAPL, sector: Technology}
+  - {symbol: MSFT, sector: Technology}
+  - {symbol: GOOGL, sector: Technology}
+  - {symbol: NVDA, sector: Technology}
+  - {symbol: CRM, sector: Technology}
+  - {symbol: JNJ, sector: Healthcare}
+  - {symbol: UNH, sector: Healthcare}
+  - {symbol: PFE, sector: Healthcare}
+  - {symbol: ABBV, sector: Healthcare}
+  - {symbol: MRK, sector: Healthcare}
+  - {symbol: JPM, sector: Financials}
+  - {symbol: BAC, sector: Financials}
+  - {symbol: V, sector: Financials}
+  - {symbol: MA, sector: Financials}
+  - {symbol: PG, sector: Consumer}
+  - {symbol: KO, sector: Consumer}
+  - {symbol: WMT, sector: Consumer}
+  - {symbol: COST, sector: Consumer}
+  - {symbol: HD, sector: Consumer}
+  - {symbol: XOM, sector: Energy/Industrials}
+  - {symbol: CVX, sector: Energy/Industrials}
+  - {symbol: CAT, sector: Energy/Industrials}
+  - {symbol: HON, sector: Energy/Industrials}
+  - {symbol: LIN, sector: Energy/Industrials}
+  - {symbol: NEE, sector: Defensive/Income}
+  - {symbol: O, sector: Defensive/Income}
+
+etfs:
+  - {symbol: VOO, category: Broad Market}
+  - {symbol: VTI, category: Broad Market}
+  - {symbol: QQQ, category: Sector}
+  - {symbol: SCHD, category: Dividend/Value}
+  - {symbol: VXUS, category: International}
+  - {symbol: BND, category: Bond}
+  - {symbol: XLE, category: Sector}
+  - {symbol: XLF, category: Sector}
+  - {symbol: GLD, category: Commodity}
+
+crypto:
+  - {symbol: BTC, coingecko_id: bitcoin, category: Major}
+  - {symbol: ETH, coingecko_id: ethereum, category: Major}
+  - {symbol: SOL, coingecko_id: solana, category: Major}
+  - {symbol: ADA, coingecko_id: cardano, category: Major}
+  - {symbol: LINK, coingecko_id: chainlink, category: Major}

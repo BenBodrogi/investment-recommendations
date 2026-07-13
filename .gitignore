@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets
+.env
+
+# Runtime output
+output/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
