@@ -33,5 +33,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dashboard-web/data/dashboard_data.json
-          git diff --staged --quiet || git commit -m "Refresh dashboard data"
-          git push
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Refresh dashboard data"
+          # The checkout can go stale during the ~90s pipeline run if anything
+          # else pushes to main in the meantime (a manual commit, another
+          # workflow run). A plain push would reject as non-fast-forward, so
+          # rebase onto the latest main and retry a few times before giving up.
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), rebasing onto latest main and retrying..."
+            git fetch origin main
+            git rebase origin/main
+          done
+          echo "Failed to push after 3 attempts"
+          exit 1
