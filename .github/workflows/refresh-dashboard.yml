@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, not the default shallow (fetch-depth: 1) clone -
+          # the retry loop below rebases onto origin/main if something else
+          # pushed during the run, and rebase needs a real common ancestor
+          # to work with, which a 1-commit-deep checkout doesn't have.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
