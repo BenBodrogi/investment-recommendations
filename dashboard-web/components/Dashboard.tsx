@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { DashboardData } from "@/lib/data";
+import type { DashboardData, DeepDive } from "@/lib/data";
 import DisclaimerBanner from "./DisclaimerBanner";
 import DataFreshness from "./DataFreshness";
 import MacroStatRow from "./MacroStatRow";
 import WatchlistTable from "./WatchlistTable";
 import DeepDiveCard from "./DeepDiveCard";
+import BestChoiceCard from "./BestChoiceCard";
 
 const ASSET_CLASS_LABEL: Record<string, string> = {
   stock: "Stocks",
@@ -22,7 +23,15 @@ const SCORE_FACTOR_LEGEND: { name: string; color: string }[] = [
   { name: "Yield", color: "var(--series-4)" },
 ];
 
-export default function Dashboard({ initialData }: { initialData: DashboardData | null }) {
+export default function Dashboard({
+  initialData,
+  canRefresh,
+  bestChoiceDeepDive,
+}: {
+  initialData: DashboardData | null;
+  canRefresh: boolean;
+  bestChoiceDeepDive: DeepDive | undefined;
+}) {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
@@ -96,13 +105,17 @@ export default function Dashboard({ initialData }: { initialData: DashboardData 
           <h1 className="text-2xl font-bold text-foreground">Investment Recommendations</h1>
           {initialData && <DataFreshness generatedAtUtc={initialData.generated_at_utc} />}
         </div>
-        <button
-          onClick={startRefresh}
-          disabled={refreshing}
-          className="rounded-md bg-series-1 px-4 py-2 font-medium text-white disabled:opacity-50"
-        >
-          {refreshing ? "Refreshing…" : "Refresh now"}
-        </button>
+        {canRefresh ? (
+          <button
+            onClick={startRefresh}
+            disabled={refreshing}
+            className="rounded-md bg-series-1 px-4 py-2 font-medium text-white disabled:opacity-50"
+          >
+            {refreshing ? "Refreshing…" : "Refresh now"}
+          </button>
+        ) : (
+          <span className="text-sm text-text-muted">Data refreshes automatically</span>
+        )}
       </header>
 
       {(refreshing || logs.length > 0) && (
@@ -127,12 +140,8 @@ export default function Dashboard({ initialData }: { initialData: DashboardData 
       ) : (
         <>
           <DisclaimerBanner text={initialData.disclaimer} />
+          <BestChoiceCard pick={initialData.best_choice} deepDive={bestChoiceDeepDive} />
           <MacroStatRow macro={initialData.macro_backdrop} />
-
-          <section>
-            <h2 className="mb-2 text-lg font-semibold text-foreground">Watchlist</h2>
-            <WatchlistTable rows={initialData.watchlist_summary} />
-          </section>
 
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -165,6 +174,11 @@ export default function Dashboard({ initialData }: { initialData: DashboardData 
                 </div>
               );
             })}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Watchlist</h2>
+            <WatchlistTable rows={initialData.watchlist_summary} />
           </section>
 
           {(initialData.data_quality.sources_fully_unavailable.length > 0 ||

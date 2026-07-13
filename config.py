@@ -22,7 +22,9 @@ CIK_CACHE_MAX_AGE_DAYS = 7
 MARKETAUX_LOOKBACK_DAYS = 7
 
 # --- Output contract ---
-OUTPUT_DIR = "output"
+# Lives inside dashboard-web/ so the committed file is part of the Next.js
+# app's own deployment - no copy step between the pipeline and Vercel.
+OUTPUT_DIR = "dashboard-web/data"
 OUTPUT_FILENAME = "dashboard_data.json"
 
 # --- FRED macro series ---
@@ -48,6 +50,12 @@ BETA_SWEET_SPOT_HIGH = 1.1
 YIELD_SWEET_SPOT_PCT = 3.5
 YIELD_DISTRESS_CUTOFF_PCT = 7.0  # dividend yield above this reads as a yield-trap signal
 NEUTRAL_SCORE = 50               # default sub-score when a metric is missing
+
+# --- Best Choice (featured pick) ---
+# Hysteresis, not a calendar lock: the featured pick only changes when a new
+# leader beats the incumbent's *current* score by more than this margin, so
+# it doesn't flip between two near-tied symbols on ordinary day-to-day noise.
+BEST_CHOICE_SWITCH_MARGIN = 5
 
 # --- Scoring thresholds: crypto ---
 CRYPTO_ATH_SWEET_SPOT_LOW_PCT = -50   # % off all-time-high

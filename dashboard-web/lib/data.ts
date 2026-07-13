@@ -55,12 +55,25 @@ export interface DashboardData {
   disclaimer: string;
   macro_backdrop: MacroBackdrop;
   watchlist_summary: ScoredSymbol[];
+  best_choice: ScoredSymbol;
   deep_dives: {
     stock?: DeepDive[];
     etf?: DeepDive[];
     crypto?: DeepDive[];
   };
   data_quality: DataQuality;
+}
+
+/** The featured pick's own deep dive, for its narrative content
+ * (situation/strengths/return estimate). The global top score is always
+ * within its asset class's deep-dive shortlist by construction, so this
+ * should always resolve - callers should still handle `undefined`. */
+export function findDeepDive(data: DashboardData, symbol: string): DeepDive | undefined {
+  for (const assetClass of ["stock", "etf", "crypto"] as const) {
+    const match = data.deep_dives[assetClass]?.find((d) => d.symbol === symbol);
+    if (match) return match;
+  }
+  return undefined;
 }
 
 export function pipelineDir(): string {
@@ -72,7 +85,7 @@ export function pipelineDir(): string {
 }
 
 export function dashboardDataPath(): string {
-  return path.join(pipelineDir(), "output", "dashboard_data.json");
+  return path.join(process.cwd(), "data", "dashboard_data.json");
 }
 
 export function pipelinePythonPath(): string {

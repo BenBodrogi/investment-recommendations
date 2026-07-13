@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# NOTE: data/dashboard_data.json is intentionally NOT ignored - it's the
+# pipeline's committed output contract, refreshed by the GitHub Actions
+# workflow and read directly by the deployed app. Don't add data/ here.
+
 # vercel
 .vercel
 

@@ -1,8 +1,10 @@
 # investment-recommendations
 
 A periodically-refreshed dashboard of balanced-risk investment recommendations
-across stocks, ETFs, and crypto, built from free financial APIs and published
-as a Claude Artifact.
+across stocks, ETFs, and crypto, built from free financial APIs. A GitHub
+Actions cron job refreshes the data daily and a Next.js app
+([dashboard-web/](dashboard-web/README.md)) deployed on Vercel serves it —
+see [Deployment](#deployment).
 
 ---
 
@@ -27,14 +29,18 @@ investment-recommendations/
 ├── intelligence/              # scoring & analysis
 │   ├── composite_scorer.py      # balanced multi-factor score, whole watchlist
 │   ├── selector.py               # top-N-per-asset-class
+│   ├── best_choice.py            # single featured pick, hysteresis-stabilized
 │   ├── macro_context.py          # FRED snapshot -> backdrop narrative
 │   ├── return_estimator.py       # heuristic return estimate + range
 │   └── deep_dive.py              # situation/strengths/weaknesses assembly
 ├── dashboard/
 │   └── payload_builder.py        # assembles the final JSON — never touches HTML
+├── .github/workflows/
+│   └── refresh-dashboard.yml     # daily cron: run pipeline, commit output, Vercel redeploys
+├── dashboard-web/data/
+│   └── dashboard_data.json       # stable contract, committed — Vercel serves this directly
 └── output/                    # gitignored, created at runtime
-    ├── dashboard_data.json         # stable contract, overwritten every run
-    └── cik_lookup_cache.json       # SEC ticker->CIK cache (~7 day refresh)
+    └── cik_lookup_cache.json       # SEC ticker->CIK cache (~7 day refresh), internal only
 ```
 
 ---
@@ -61,11 +67,11 @@ descriptive string in `"app-name your-email"` format.
 ```
 python run_pipeline.py
 ```
-Writes `output/dashboard_data.json`. Publishing that data as a Claude Artifact
-and scheduling recurring runs are separate steps, done outside this codebase
-(see Status below) — Python has no way to call Claude's Artifact tool, so a
-Claude session has to be the one to read this file and publish/refresh the
-dashboard.
+Writes `dashboard-web/data/dashboard_data.json`, which `dashboard-web` reads
+directly. Locally, `dashboard-web`'s "Refresh now" button runs this same
+command for you. In production, `.github/workflows/refresh-dashboard.yml`
+runs it daily and commits the result, which Vercel picks up as a normal
+push and redeploys — see [Deployment](#deployment) below.
 
 Useful flags for manual iteration:
 - `--skip-deep-dive` — broad screen only, skips the slower per-candidate enrichment
@@ -114,6 +120,13 @@ base rate + 0.2 × dividend yield`, ± a volatility-scaled spread. This is a
 transparent heuristic blend, not a model — no Monte Carlo, no ML — and every
 estimate carries an explicit "rough estimate, not a prediction" caveat.
 
+**Best choice**: the single highest composite score across the *entire*
+watchlist (any asset class). Re-evaluated on every run, but stabilized by
+hysteresis (`config.BEST_CHOICE_SWITCH_MARGIN`, default 5 points) — the
+featured pick only changes when a new leader clearly beats the incumbent's
+current score, not on ordinary day-to-day noise. Not a calendar lock: there's
+no expiry, just a switching threshold. See `intelligence/best_choice.py`.
+
 ---
 
 ## Data sources
@@ -125,6 +138,36 @@ estimate carries an explicit "rough estimate, not a prediction" caveat.
 | [FRED](https://fred.stlouisfed.org/docs/api/api_key.html) | Macro backdrop | Yes (free) | Once per run |
 | [SEC EDGAR](https://www.sec.gov/os/accessing-edgar-data) | Authoritative fundamentals | No (User-Agent required) | Deep-dive stocks only |
 | [MarketAux](https://www.marketaux.com/account/dashboard) | News/sentiment | Yes (free, no card) | Deep-dive candidates only |
+
+---
+
+## Deployment
+
+Vercel's serverless functions can't run this pipeline directly — free-tier
+functions cap at ~10s, Pro at 60-300s, and a real run takes ~90-150s. Instead:
+
+1. `.github/workflows/refresh-dashboard.yml` runs daily (cron, plus a manual
+   `workflow_dispatch` trigger) on a GitHub-hosted runner: checks out the
+   repo, installs `requirements.txt`, runs `run_pipeline.py` with the 5 API
+   keys from GitHub Actions secrets, and commits
+   `dashboard-web/data/dashboard_data.json` if it changed.
+2. That push is an ordinary commit to `main`, so Vercel's normal git
+   integration redeploys automatically — no webhook or extra config.
+3. `dashboard-web` reads the committed JSON directly (`lib/data.ts`,
+   `process.cwd()`-relative), so Vercel never talks to the financial APIs
+   and needs no environment variables of its own.
+
+**One-time setup** (not automatable — both require your own account access):
+- Add `FINNHUB_API_KEY`, `FRED_API_KEY`, `MARKETAUX_API_KEY`,
+  `SEC_EDGAR_USER_AGENT`, `COINGECKO_API_KEY` as GitHub Actions secrets
+  (repo Settings → Secrets and variables → Actions).
+- Import this repo into Vercel as a new project with **Root Directory set
+  to `dashboard-web`**; everything else can stay at Vercel's defaults.
+
+The local "Refresh now" button only appears when `PIPELINE_PYTHON` is set
+(i.e. in local dev via `dashboard-web/.env.local`) — the deployed site
+shows "Data refreshes automatically" instead, since there's no local Python
+process for it to spawn there.
 
 ---
 
@@ -142,4 +185,4 @@ consult a licensed professional before making investment decisions.
 | Phase | Status | Description |
 |---|---|---|
 | 1 | Done | Pipeline: fetch, score, deep-dive, write JSON — verified end-to-end |
-| 2 | Next | Recurring Claude Code scheduled session republishes the dashboard Artifact |
+| 2 | Built, not yet live | GitHub Actions + Vercel auto-deploy (see [Deployment](#deployment)) — code is in place; still needs your GitHub secrets added and the repo imported into Vercel before it's actually running on a schedule |

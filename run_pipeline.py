@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-"""Entry point: fetch -> score -> deep-dive -> write output/dashboard_data.json.
+"""Entry point: fetch -> score -> deep-dive -> write dashboard-web/data/dashboard_data.json.
 
 Always writes to the same fixed path and exits 0 on partial-data runs
 (degrades gracefully). Exits non-zero only if the watchlist fails to load
 or zero symbols score at all. Prints RESULT_PATH=<path> as a final,
-parseable confirmation line - this is the contract a future scheduled
-Claude session will rely on to find the output.
+parseable confirmation line. Run on a schedule by
+.github/workflows/refresh-dashboard.yml, which commits the result so Vercel
+redeploys with fresh data.
 """
 import argparse
 import logging
@@ -18,7 +19,7 @@ from data import coingecko_client, edgar_client, finnhub_client, marketaux_clien
 from data.errors import DataSourceError
 from data.watchlist import load_watchlist
 from dashboard import payload_builder
-from intelligence import composite_scorer, deep_dive, macro_context, selector
+from intelligence import best_choice, composite_scorer, deep_dive, macro_context, selector
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,8 @@ def main() -> int:
         "run_duration_seconds": round(time.monotonic() - start, 1),
     }
 
-    payload = payload_builder.build_payload(scored_symbols, deep_dives, macro, data_quality)
+    best_choice_symbol = best_choice.determine_best_choice(scored_symbols)
+    payload = payload_builder.build_payload(scored_symbols, deep_dives, macro, data_quality, best_choice_symbol)
     result_path = payload_builder.write_payload(payload)
 
     logger.info(

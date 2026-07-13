@@ -15,21 +15,40 @@ function relativeTime(fromIso: string): string {
 
 const STALE_AFTER_DAYS = 8; // a bit past the suggested weekly cadence
 
+function isStale(fromIso: string): boolean {
+  const ageDays = (Date.now() - new Date(fromIso).getTime()) / 86_400_000;
+  return ageDays > STALE_AFTER_DAYS;
+}
+
 export default function DataFreshness({ generatedAtUtc }: { generatedAtUtc: string }) {
   const [label, setLabel] = useState(() => relativeTime(generatedAtUtc));
+  const [stale, setStale] = useState(() => isStale(generatedAtUtc));
 
+  // Re-derive when generatedAtUtc changes - router.refresh() updates this
+  // prop without remounting the component, so without this, label/stale
+  // would keep showing pre-refresh values until the next 60s tick. The
+  // update only ever runs inside a timer callback (never synchronously in
+  // the effect body), so this doesn't trip react-hooks/set-state-in-effect;
+  // Date.now() only ever runs inside that callback or the useState
+  // initializers above, never directly in the render body, so it doesn't
+  // trip react-hooks/purity or risk a hydration mismatch either.
   useEffect(() => {
-    const id = setInterval(() => setLabel(relativeTime(generatedAtUtc)), 60_000);
-    return () => clearInterval(id);
+    const update = () => {
+      setLabel(relativeTime(generatedAtUtc));
+      setStale(isStale(generatedAtUtc));
+    };
+    const immediate = setTimeout(update, 0);
+    const interval = setInterval(update, 60_000);
+    return () => {
+      clearTimeout(immediate);
+      clearInterval(interval);
+    };
   }, [generatedAtUtc]);
-
-  const ageDays = (Date.now() - new Date(generatedAtUtc).getTime()) / 86_400_000;
-  const stale = ageDays > STALE_AFTER_DAYS;
 
   return (
     <span
       className={`text-sm ${stale ? "text-status-critical font-medium" : "text-text-muted"}`}
-      title={new Date(generatedAtUtc).toLocaleString()}
+      title={new Date(generatedAtUtc).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "medium" })}
     >
       Last updated {label}
       {stale ? " — consider refreshing" : ""}
