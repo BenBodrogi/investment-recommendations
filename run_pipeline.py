@@ -15,9 +15,10 @@ import time
 
 from dotenv import load_dotenv
 
-from data import coingecko_client, edgar_client, finnhub_client, marketaux_client
+import config
+from data import coingecko_client, edgar_client, finnhub_client, marketaux_client, sp500_client
 from data.errors import DataSourceError
-from data.watchlist import load_watchlist
+from data.watchlist import WatchlistEntry, load_watchlist
 from dashboard import payload_builder
 from intelligence import best_choice, composite_scorer, deep_dive, macro_context, selector
 
@@ -26,10 +27,53 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--watchlist", default=None, help="Path to watchlist YAML (default: config.WATCHLIST_PATH)")
+    parser.add_argument(
+        "--watchlist", default=None,
+        help="Path to watchlist YAML. If given, discovery is skipped entirely and only this "
+             "file's manual entries are used (fast path for local iteration). If omitted, the "
+             "default watchlist.yaml is merged with auto-discovered S&P 500 stocks and top-N "
+             "crypto by market cap.",
+    )
     parser.add_argument("--log-level", default="INFO")
     parser.add_argument("--skip-deep-dive", action="store_true", help="Skip deep-dive enrichment (faster iteration)")
+    parser.add_argument(
+        "--print-universe-only", action="store_true",
+        help="Build the universe (manual + discovered) and print counts, then exit - no API "
+             "calls beyond discovery itself, no scoring.",
+    )
     return parser.parse_args()
+
+
+def build_universe(explicit_watchlist_path: str | None) -> list[WatchlistEntry]:
+    """Manual watchlist.yaml entries, merged with auto-discovered S&P 500
+    stocks and top-N crypto by market cap - unless a watchlist path was
+    explicitly passed, in which case discovery is skipped and only that
+    file's entries are used (the fast path for local iteration)."""
+    manual_entries = load_watchlist(explicit_watchlist_path)
+    if explicit_watchlist_path is not None:
+        return manual_entries
+
+    entries = list(manual_entries)
+    seen_stock_symbols = {e.symbol for e in entries if e.asset_class == "stock"}
+    seen_crypto_ids = {e.coingecko_id for e in entries if e.asset_class == "crypto"}
+
+    try:
+        for row in sp500_client.get_sp500_constituents():
+            if row["symbol"] not in seen_stock_symbols:
+                entries.append(WatchlistEntry(symbol=row["symbol"], asset_class="stock", group=row["sector"]))
+                seen_stock_symbols.add(row["symbol"])
+    except DataSourceError as exc:
+        logger.warning("S&P 500 discovery unavailable this run, falling back to manual stocks only: %s", exc)
+
+    try:
+        for cg_id, symbol in coingecko_client.get_top_market_ids(config.CRYPTO_DISCOVERY_TOP_N):
+            if cg_id not in seen_crypto_ids:
+                entries.append(WatchlistEntry(symbol=symbol, asset_class="crypto", group="Discovered", coingecko_id=cg_id))
+                seen_crypto_ids.add(cg_id)
+    except DataSourceError as exc:
+        logger.warning("Crypto discovery unavailable this run, falling back to manual crypto only: %s", exc)
+
+    return entries
 
 
 def broad_screen(entries):
@@ -120,10 +164,20 @@ def main() -> int:
     start = time.monotonic()
 
     try:
-        entries = load_watchlist(args.watchlist)
+        entries = build_universe(args.watchlist)
     except (OSError, ValueError) as exc:
         logger.error("Fatal: could not load watchlist: %s", exc)
         return 1
+
+    if args.print_universe_only:
+        by_class = {"stock": 0, "etf": 0, "crypto": 0}
+        for e in entries:
+            by_class[e.asset_class] += 1
+        logger.info(
+            "Universe: %d stocks, %d etfs, %d crypto (%d total)",
+            by_class["stock"], by_class["etf"], by_class["crypto"], len(entries),
+        )
+        return 0
 
     scored_symbols, symbols_skipped, raw_data = broad_screen(entries)
     if not scored_symbols:

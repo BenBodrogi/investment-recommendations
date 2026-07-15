@@ -53,3 +53,37 @@ def get_markets(coingecko_ids: list[str]) -> dict[str, CryptoMarket]:
             change_30d_pct=row.get("price_change_percentage_30d_in_currency"),
         )
     return results
+
+
+def get_top_market_ids(n: int) -> list[tuple[str, str]]:
+    """Top n coins by market cap as [(coingecko_id, symbol), ...], for
+    universe discovery only - identifies which coins to include. Actual
+    market data still comes from get_markets() in the normal broad-screen
+    flow, so this doesn't duplicate that fetch."""
+    headers = {}
+    api_key = os.getenv("COINGECKO_API_KEY")
+    if api_key:
+        headers["x-cg-demo-api-key"] = api_key
+
+    try:
+        resp = requests.get(
+            f"{config.COINGECKO_BASE_URL}/coins/markets",
+            params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": n,
+                "page": 1,
+            },
+            headers=headers,
+            timeout=config.DEFAULT_REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        rows = resp.json()
+    except requests.RequestException as exc:
+        raise DataSourceError("coingecko", None, str(exc)) from exc
+
+    return [
+        (row["id"], row["symbol"].upper())
+        for row in rows
+        if row.get("id") and row.get("symbol")
+    ]

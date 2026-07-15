@@ -75,7 +75,11 @@ export default function WatchlistTable({ rows }: { rows: ScoredSymbol[] }) {
         </thead>
         <tbody>
           {sorted.map((row) => (
-            <tr key={row.symbol} className="border-b border-border-hairline last:border-0 hover:bg-surface">
+            // symbol alone isn't a safe key - discovery now spans ~500 stocks
+            // and 100 crypto, where ticker collisions across asset classes
+            // are a real occurrence (e.g. ADI, BDX are both a stock ticker
+            // and an unrelated crypto ticker), not just a hypothetical.
+            <tr key={`${row.symbol}-${row.asset_class}`} className="border-b border-border-hairline last:border-0 hover:bg-surface">
               <td className="px-3 py-2 font-semibold text-foreground">{row.symbol}</td>
               <td className="px-3 py-2 text-text-secondary capitalize">{row.asset_class}</td>
               <td className="px-3 py-2 text-text-secondary">{row.group}</td>

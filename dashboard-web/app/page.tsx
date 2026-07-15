@@ -14,6 +14,8 @@ export default function Home() {
   // node:fs import is fine here) - Dashboard is a Client Component and must
   // never import a value (only types) from lib/data.ts, or Turbopack tries
   // to bundle node:fs for the browser and the build breaks.
-  const bestChoiceDeepDive = data ? findDeepDive(data, data.best_choice.symbol) : undefined;
+  const bestChoiceDeepDive = data
+    ? findDeepDive(data, data.best_choice.symbol, data.best_choice.asset_class)
+    : undefined;
   return <Dashboard initialData={data} canRefresh={canRefresh} bestChoiceDeepDive={bestChoiceDeepDive} />;
 }

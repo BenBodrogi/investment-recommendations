@@ -21,6 +21,19 @@ CIK_CACHE_PATH = "output/cik_lookup_cache.json"
 CIK_CACHE_MAX_AGE_DAYS = 7
 MARKETAUX_LOOKBACK_DAYS = 7
 
+# --- Universe discovery ---
+# Stocks: no free, ranked pre-Finnhub source exists other than the S&P 500
+# constituent list itself (Finnhub's own index-constituents endpoint is
+# paywalled - confirmed). Cached longer than the EDGAR CIK map since
+# reconstitution is infrequent.
+SP500_CONSTITUENTS_URL = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+SP500_CACHE_PATH = "output/sp500_constituents_cache.json"
+SP500_CACHE_MAX_AGE_DAYS = 30
+# Crypto: CoinGecko's free tier supports up to 250 per call at no extra cost;
+# 100 stays clear of the thinnest speculative tail where the scoring
+# heuristics (ATH distance, 30d volatility) get noisier.
+CRYPTO_DISCOVERY_TOP_N = 100
+
 # --- Output contract ---
 # Lives inside dashboard-web/ so the committed file is part of the Next.js
 # app's own deployment - no copy step between the pipeline and Vercel.

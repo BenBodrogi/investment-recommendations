@@ -67,13 +67,18 @@ export interface DashboardData {
 /** The featured pick's own deep dive, for its narrative content
  * (situation/strengths/return estimate). The global top score is always
  * within its asset class's deep-dive shortlist by construction, so this
- * should always resolve - callers should still handle `undefined`. */
-export function findDeepDive(data: DashboardData, symbol: string): DeepDive | undefined {
-  for (const assetClass of ["stock", "etf", "crypto"] as const) {
-    const match = data.deep_dives[assetClass]?.find((d) => d.symbol === symbol);
-    if (match) return match;
-  }
-  return undefined;
+ * should always resolve - callers should still handle `undefined`.
+ * assetClass is required, not just symbol: with ~500 discovered stocks and
+ * 100 discovered crypto, ticker collisions across asset classes are a real
+ * occurrence (e.g. ADI, BDX are both a stock ticker and an unrelated crypto
+ * ticker) - matching on symbol alone could silently attach the wrong
+ * asset's narrative if the collision ever lands on the featured pick. */
+export function findDeepDive(
+  data: DashboardData,
+  symbol: string,
+  assetClass: ScoredSymbol["asset_class"]
+): DeepDive | undefined {
+  return data.deep_dives[assetClass]?.find((d) => d.symbol === symbol);
 }
 
 export function pipelineDir(): string {

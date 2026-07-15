@@ -39,6 +39,23 @@ etfs:
   - {symbol: XLE, category: Sector}
   - {symbol: XLF, category: Sector}
   - {symbol: GLD, category: Commodity}
+  - {symbol: XLK, category: Sector}
+  - {symbol: XLV, category: Sector}
+  - {symbol: XLY, category: Sector}
+  - {symbol: XLP, category: Sector}
+  - {symbol: XLI, category: Sector}
+  - {symbol: XLB, category: Sector}
+  - {symbol: XLU, category: Sector}
+  - {symbol: XLRE, category: Sector}
+  - {symbol: XLC, category: Sector}
+  - {symbol: VEA, category: International}
+  - {symbol: VWO, category: International}
+  - {symbol: TLT, category: Bond}
+  - {symbol: LQD, category: Bond}
+  - {symbol: HYG, category: Bond}
+  - {symbol: IWM, category: Small Cap}
+  - {symbol: VYM, category: Dividend/Value}
+  - {symbol: SLV, category: Commodity}
 
 crypto:
   - {symbol: BTC, coingecko_id: bitcoin, category: Major}

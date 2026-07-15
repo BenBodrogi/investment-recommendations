@@ -15,12 +15,13 @@ investment-recommendations/
 ├── .env                     # gitignored — real secrets
 ├── .env.example             # every key documented with a signup link
 ├── config.py                 # all constants: URLs, weights, thresholds, disclaimers
-├── watchlist.yaml            # curated, user-editable ~40-symbol universe
+├── watchlist.yaml            # manual pins/overrides — additive to auto-discovery, not the whole universe
 ├── requirements.txt
-├── run_pipeline.py           # CLI entry point — fetch -> score -> deep-dive -> JSON
+├── run_pipeline.py           # CLI entry point — discover -> fetch -> score -> deep-dive -> JSON
 ├── data/                     # one API client wrapper per source
-│   ├── errors.py               # DataSourceError — normalizes all 5 clients' failures
+│   ├── errors.py               # DataSourceError — normalizes all clients' failures
 │   ├── watchlist.py             # loads/validates watchlist.yaml
+│   ├── sp500_client.py          # S&P 500 constituent discovery (cached, no key)
 │   ├── finnhub_client.py
 │   ├── coingecko_client.py
 │   ├── fred_client.py
@@ -40,7 +41,8 @@ investment-recommendations/
 ├── dashboard-web/data/
 │   └── dashboard_data.json       # stable contract, committed — Vercel serves this directly
 └── output/                    # gitignored, created at runtime
-    └── cik_lookup_cache.json       # SEC ticker->CIK cache (~7 day refresh), internal only
+    ├── cik_lookup_cache.json       # SEC ticker->CIK cache (~7 day refresh), internal only
+    └── sp500_constituents_cache.json  # S&P 500 discovery cache (~30 day refresh), internal only
 ```
 
 ---
@@ -73,19 +75,40 @@ command for you. In production, `.github/workflows/refresh-dashboard.yml`
 runs it daily and commits the result, which Vercel picks up as a normal
 push and redeploys — see [Deployment](#deployment) below.
 
-Useful flags for manual iteration:
+By default this discovers the full universe (~500 S&P 500 stocks + top-100
+crypto by market cap, see [Watchlist](#watchlist) below) and takes roughly
+**15-20 minutes**, almost all of it Finnhub's throttled broad screen. For
+fast local iteration:
+- `--watchlist path/to/file.yaml` — skips discovery entirely and scores only
+  that file's manual entries. Point it at a small test file for a run that
+  takes seconds instead of minutes.
+- `--print-universe-only` — builds the full discovered+manual universe and
+  prints the counts, then exits. No Finnhub calls, no scoring — useful for
+  sanity-checking discovery itself without waiting for a full run.
 - `--skip-deep-dive` — broad screen only, skips the slower per-candidate enrichment
-- `--watchlist path/to/file.yaml` — use an alternate watchlist
 - `--log-level DEBUG` — verbose logging
 
 ---
 
 ## Watchlist
 
-Edit `watchlist.yaml` freely — it's re-read on every run. Starter composition:
-26 stocks across 6 sectors (Technology, Healthcare, Financials, Consumer,
-Energy/Industrials, Defensive/Income), 9 ETFs (broad market, sector, dividend,
-international, bond, commodity), 5 major crypto (BTC, ETH, SOL, ADA, LINK).
+The universe scored each run is **auto-discovered stocks and crypto, plus
+manual pins from `watchlist.yaml`** — not a fixed hand list. `watchlist.yaml`
+is additive/override, not the whole story:
+
+| Asset class | Source | Size |
+|---|---|---|
+| Stocks | Full S&P 500, via `data/sp500_client.py` (`config.SP500_CONSTITUENTS_URL`, cached ~30 days — no key needed) | ~500 |
+| Crypto | Top N by market cap via CoinGecko (`config.CRYPTO_DISCOVERY_TOP_N`, currently 100) | 100 |
+| ETFs | Hand-curated in `watchlist.yaml` only — no free source exists that ranks ETFs by size/quality the way an index does for large-cap stocks (checked: Finnhub's ETF list and index-constituents endpoints are both paywalled, and community datasets that do exist have no AUM/size signal to filter by) | ~26 |
+
+Any manual entry in `watchlist.yaml` is deduped against discovery (by symbol
+for stocks, by `coingecko_id` for crypto) rather than double-counted — it
+exists to *pin* a specific symbol you want tracked (e.g. one outside the
+S&P 500) or to override its sector/category label, not to define the whole
+universe anymore. Edit it freely, it's re-read every run. See the `--watchlist`
+and `--print-universe-only` flags above for iterating without a full
+15-20 minute discovery run.
 
 ---
 
@@ -144,10 +167,11 @@ run regardless of margin. See `intelligence/best_choice.py`.
 | Source | Provides | Key required | Scope |
 |---|---|---|---|
 | [Finnhub](https://finnhub.io/register) | Quotes, fundamentals, earnings calendar | Yes (free) | Whole watchlist |
-| [CoinGecko](https://www.coingecko.com/en/api) | Crypto market data | No | Whole crypto watchlist |
+| [CoinGecko](https://www.coingecko.com/en/api) | Crypto market data + top-N discovery | No | Whole crypto watchlist |
 | [FRED](https://fred.stlouisfed.org/docs/api/api_key.html) | Macro backdrop | Yes (free) | Once per run |
 | [SEC EDGAR](https://www.sec.gov/os/accessing-edgar-data) | Authoritative fundamentals | No (User-Agent required) | Deep-dive stocks only |
 | [MarketAux](https://www.marketaux.com/account/dashboard) | News/sentiment | Yes (free, no card) | Deep-dive candidates only |
+| [datasets/s-and-p-500-companies](https://github.com/datasets/s-and-p-500-companies) | S&P 500 stock discovery | No | Once per run (cached ~30 days) |
 
 ---
 
